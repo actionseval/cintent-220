@@ -1,0 +1,78 @@
+# Continuous integration tests.
+
+name: pypi-test
+
+# CINTENT >> MANUAL TRIGGER
+# on:
+#   schedule:
+#     - cron: "0 2 * * 1"  # Every Monday at 2am.
+#   push:
+#     branches:
+#       - main
+#     paths:
+#       - '.github/workflows/pypi-test.yml'
+#   pull_request:
+#     branches:
+#       - main
+#     paths:
+#       - '.github/workflows/pypi-test.yml'
+#   workflow_run:
+#     workflows:
+#       - pypi-publish
+#     types:
+#       - completed
+#   workflow_dispatch:
+on: [repository_dispatch, workflow_dispatch]
+
+permissions: read-all
+
+jobs:
+  pypi-test:
+    name: Test PyPI Distribution
+    # CINTENT >> REMOVE_TRIGGER
+    # if: ${{ github.event.workflow_run.conclusion != 'failure' }}
+    runs-on: ${{ matrix.os }}
+    env:
+      SYSTEM_VERSION_COMPAT: 0  # See https://github.com/actions/setup-python/issues/279.
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          # CINTENT >> REMOVE_MATRIX + CINTENT >> CHANGE_VERSION
+          # - macos-11
+          # - macos-12
+          # - ubuntu-20.04
+          - ubuntu-latest
+        python-version:
+          - '3.11'
+
+    steps:
+      # CINTENT >> INSERT_CINTENT
+      - uses: JavidDitty/setup-cintent@a606c80c34ec190c6a20dea33d6d58ddb6c4e0cc
+
+      - name: Set up Python ${{ matrix.python_version }}
+        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Python dependencies
+        run: |
+          pip install --upgrade pip
+          pip install pytest-xdist setuptools
+
+      - name: Install from PyPI
+        run: |
+          pip -vvv install dm-meltingpot
+          pip list
+
+      - name: Test installation
+        run: pytest --pyargs meltingpot
+        
+      # CINTENT >> INSERT_CINTENT
+      - name: Upload CIntent Artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ env.CINTENT_ARTIFACT_NAME }}
+          path: ${{ env.CINTENT_LOGS }}
